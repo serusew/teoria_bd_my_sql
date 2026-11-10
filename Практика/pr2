@@ -1,0 +1,235 @@
+USE CollegeDB;
+GO
+
+IF OBJECT_ID('college.groups', 'U') IS NULL
+BEGIN
+    CREATE TABLE college.groups (
+        id   INT IDENTITY(1,1) PRIMARY KEY,
+        name NVARCHAR(50) NOT NULL
+    );
+END
+GO
+
+IF OBJECT_ID('college.students', 'U') IS NULL
+BEGIN
+    CREATE TABLE college.students (
+        id            INT IDENTITY(1,1) PRIMARY KEY,
+        name          NVARCHAR(100) NOT NULL,
+        age           INT NOT NULL,
+        average_grade DECIMAL(3,2) NOT NULL,
+        group_id      INT NULL
+    );
+END
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID('college.students') AND name = 'group_id'
+)
+BEGIN
+    ALTER TABLE college.students ADD group_id INT NULL;
+END
+GO
+
+TRUNCATE TABLE college.students;
+DELETE FROM college.groups;
+DBCC CHECKIDENT ('college.groups', RESEED, 0) WITH NO_INFOMSGS;
+
+INSERT INTO college.groups (name) VALUES
+(N'ИС-21'),
+(N'ПР-21'),
+(N'СА-21');
+GO
+
+INSERT INTO college.students (name, age, average_grade, group_id) VALUES
+(N'Миха',    18, 4.70, 1),
+(N'Мария',   17, 4.20, 1),
+(N'Алешка', 18, 3.60, 1),
+(N'Анна',    19, 4.90, 2),
+(N'Дмитрий', 17, 2.80, 2),
+(N'Елена',   18, 4.50, 3),
+(N'Максимка',  19, 3.90, 3);
+GO
+
+-- Проверка
+SELECT * FROM college.groups;
+SELECT * FROM college.students;
+GO
+
+-- Задание 1
+SELECT name, average_grade
+FROM college.students
+WHERE average_grade > (
+    SELECT AVG(average_grade)
+    FROM college.students
+);
+GO
+
+-- Задание 2
+SELECT name, age
+FROM college.students
+WHERE age > (
+    SELECT AVG(CAST(age AS DECIMAL(5,2)))
+    FROM college.students
+);
+GO
+
+-- Задание 3
+SELECT name, average_grade
+FROM college.students
+WHERE average_grade = (
+    SELECT MAX(average_grade)
+    FROM college.students
+);
+GO
+
+
+-- Задание 4
+SELECT name, group_id
+FROM college.students
+WHERE group_id IN (
+    SELECT id
+    FROM college.groups
+    WHERE name LIKE N'%ИС%'
+);
+GO
+
+-- Задание 5
+SELECT name, group_id
+FROM college.students
+WHERE group_id IN (
+    SELECT id
+    FROM college.groups
+    WHERE name LIKE N'%21'
+);
+GO
+
+-- Задание 6
+SELECT name
+FROM college.groups
+WHERE id IN (
+    SELECT group_id
+    FROM college.students
+    WHERE average_grade > 4.5
+);
+GO
+
+-- Задание 7
+SELECT g.name
+FROM college.groups AS g
+WHERE EXISTS (
+    SELECT 1
+    FROM college.students AS s
+    WHERE s.group_id = g.id
+      AND s.average_grade > 4.5
+);
+GO
+
+-- Задание 8
+SELECT g.name
+FROM college.groups AS g
+WHERE EXISTS (
+    SELECT 1
+    FROM college.students AS s
+    WHERE s.group_id = g.id
+      AND s.age < 18
+);
+GO
+
+-- Задание 9
+SELECT g.name
+FROM college.groups AS g
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM college.students AS s
+    WHERE s.group_id = g.id
+      AND s.average_grade < 3.0
+);
+GO
+
+-- Задание 10
+SELECT s.name, s.average_grade, s.group_id
+FROM college.students AS s
+WHERE s.average_grade > (
+    SELECT AVG(s2.average_grade)
+    FROM college.students AS s2
+    WHERE s2.group_id = s.group_id
+);
+GO
+
+-- Задание 11
+SELECT s.name, s.age, s.group_id
+FROM college.students AS s
+WHERE s.age > (
+    SELECT AVG(CAST(s2.age AS DECIMAL(5,2)))
+    FROM college.students AS s2
+    WHERE s2.group_id = s.group_id
+);
+GO
+
+-- Задание 12
+SELECT g.name
+FROM college.groups AS g
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM college.students AS s
+    WHERE s.group_id = g.id
+      AND s.average_grade < 3.0
+);
+GO
+
+-- Задание 13
+SELECT name
+FROM college.groups
+WHERE id IN (
+    SELECT group_id
+    FROM college.students
+    WHERE average_grade >= 4.5
+);
+GO
+
+-- Задание 14
+SELECT s.name, s.average_grade, s.group_id
+FROM college.students AS s
+WHERE s.group_id IN (
+    SELECT id
+    FROM college.groups
+    WHERE name = N'ПР-21'
+)
+AND s.average_grade > (
+    SELECT AVG(s2.average_grade)
+    FROM college.students AS s2
+    WHERE s2.group_id = s.group_id
+);
+GO
+
+-- Задание 15
+SELECT s.name, s.age, s.average_grade, s.group_id
+FROM college.students AS s
+WHERE s.age < (
+    SELECT AVG(CAST(s2.age AS DECIMAL(5,2)))
+    FROM college.students AS s2
+    WHERE s2.group_id = s.group_id
+)
+AND s.average_grade > 4.0;
+GO
+
+-- Задание 16
+SELECT
+    s.name                          AS [Студент],
+    s.average_grade                 AS [Средний балл],
+    g.name                          AS [Группа],
+    (
+        SELECT AVG(s2.average_grade)
+        FROM college.students AS s2
+        WHERE s2.group_id = s.group_id
+    )                               AS [Средний балл группы]
+FROM college.students AS s
+JOIN college.groups   AS g ON g.id = s.group_id
+WHERE s.average_grade > (
+    SELECT AVG(s2.average_grade)
+    FROM college.students AS s2
+    WHERE s2.group_id = s.group_id
+)
+ORDER BY s.average_grade DESC;
+GO
