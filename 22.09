@@ -1,0 +1,121 @@
+IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'college')
+    EXEC('CREATE SCHEMA college');
+GO
+
+--1 
+
+IF OBJECT_ID('college.Groups', 'U') IS NULL
+CREATE TABLE college.Groups (
+    group_id   INT PRIMARY KEY,
+    group_name NVARCHAR(50) NOT NULL
+);
+GO
+
+IF OBJECT_ID('college.Students', 'U') IS NULL
+CREATE TABLE college.Students (
+    student_id INT PRIMARY KEY,
+    first_name NVARCHAR(50) NOT NULL,
+    last_name  NVARCHAR(50) NOT NULL
+);
+GO
+
+IF OBJECT_ID('college.StudentGroups', 'U') IS NULL
+CREATE TABLE college.StudentGroups (
+    student_id INT NOT NULL,
+    group_id   INT NOT NULL,
+    CONSTRAINT PK_StudentGroups PRIMARY KEY (student_id, group_id),
+    CONSTRAINT FK_SG_Student FOREIGN KEY (student_id) REFERENCES college.Students(student_id),
+    CONSTRAINT FK_SG_Group   FOREIGN KEY (group_id)   REFERENCES college.Groups(group_id)
+);
+GO
+
+IF OBJECT_ID('college.Grades', 'U') IS NULL
+CREATE TABLE college.Grades (
+    grade_id   INT IDENTITY PRIMARY KEY,
+    student_id INT NOT NULL,
+    grade      INT NOT NULL CHECK (grade BETWEEN 1 AND 5),
+    CONSTRAINT FK_Grades_Student FOREIGN KEY (student_id)
+        REFERENCES college.Students(student_id)
+);
+GO
+
+-- 2
+
+IF NOT EXISTS (SELECT 1 FROM college.Groups)
+BEGIN
+    INSERT INTO college.Groups (group_id, group_name) VALUES
+        (1, N'ИС-21'),
+        (2, N'ПИ-22');
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM college.Students)
+BEGIN
+    INSERT INTO college.Students (student_id, first_name, last_name) VALUES
+        (1, N'Иван',  N'Иванов'),
+        (2, N'Пётр',  N'Петров'),
+        (3, N'Анна',  N'Сидорова');
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM college.StudentGroups)
+BEGIN
+    INSERT INTO college.StudentGroups (student_id, group_id) VALUES
+        (1, 1),
+        (2, 1),
+        (3, 2);
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM college.Grades)
+BEGIN
+    INSERT INTO college.Grades (student_id, grade) VALUES
+        (1, 5), (1, 4), (1, 3), (1, 5),
+        (2, 4), (2, 4), (2, 5),
+        (3, 5), (3, 5);
+END
+GO
+
+-- 3 
+
+CREATE OR ALTER PROCEDURE college.GetStudentStatistics
+    @student_id INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM college.Students WHERE student_id = @student_id)
+    BEGIN
+        THROW 50001, N'Студент с указанным ID не найден.', 1;
+    END;
+
+    SELECT
+        s.first_name + N' ' + s.last_name   AS student_name,
+        g.group_name                        AS group_name,
+        COUNT(gr.grade)                     AS grades_count,
+        AVG(CAST(gr.grade AS DECIMAL(5,2))) AS avg_grade,
+        MIN(gr.grade)                       AS min_grade,
+        MAX(gr.grade)                       AS max_grade
+    FROM college.Students s
+    LEFT JOIN college.StudentGroups sg ON sg.student_id = s.student_id
+    LEFT JOIN college.Groups g         ON g.group_id    = sg.group_id
+    LEFT JOIN college.Grades gr        ON gr.student_id = s.student_id
+    WHERE s.student_id = @student_id
+    GROUP BY s.first_name, s.last_name, g.group_name;
+END;
+GO
+
+-- 4 Проверка 
+
+EXEC college.GetStudentStatistics @student_id = 1;
+BEGIN TRY
+    EXEC college.GetStudentStatistics @student_id = 999;
+END TRY
+BEGIN CATCH
+    SELECT
+        ERROR_NUMBER()    AS error_number,
+        ERROR_MESSAGE()   AS error_message,
+        ERROR_SEVERITY()  AS severity,
+        ERROR_STATE()     AS state;
+END CATCH;
+GO
