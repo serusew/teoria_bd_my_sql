@@ -1,0 +1,262 @@
+USE CollegeDB;
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'college')
+    EXEC('CREATE SCHEMA college');
+GO
+
+IF OBJECT_ID('college.students', 'U') IS NULL
+BEGIN
+    CREATE TABLE college.students (
+        id            INT IDENTITY(1,1) PRIMARY KEY,
+        name          NVARCHAR(100) NOT NULL,
+        age           INT NOT NULL,
+        average_grade DECIMAL(3,2) NOT NULL
+    );
+END
+GO
+
+TRUNCATE TABLE college.students;
+GO
+
+INSERT INTO college.students (name, age, average_grade) VALUES
+(N' Настюшка',     18, 4.70),
+(N'Машечка',    17, 4.20),
+(N'Алексей',  18, 3.60),
+(N'Анюта',     19, 4.90),
+(N'Дмитрий',  19, 2.80);
+GO
+
+SELECT * FROM college.students;
+GO
+
+-- Задание 1
+DECLARE @age INT = 18;
+SELECT @age AS age;
+GO
+
+-- Задание 2
+DECLARE @age INT = 18;
+SET @age = 20;
+SELECT @age AS age;
+GO
+
+-- Задание 3
+DECLARE @name NVARCHAR(100) = N'Иван';
+DECLARE @age INT = 18;
+DECLARE @averageGrade DECIMAL(3,2) = 4.70;
+
+SELECT @name AS name,
+       @age AS age,
+       @averageGrade AS average_grade;
+GO
+
+-- Задание 4
+DECLARE @studentName NVARCHAR(100);
+
+SELECT @studentName = name
+FROM college.students
+WHERE id = 1;
+
+SELECT @studentName AS student_name;
+GO
+
+-- Задание 5
+DECLARE @studentName  NVARCHAR(100);
+DECLARE @studentAge   INT;
+DECLARE @studentGrade DECIMAL(3,2);
+
+SELECT @studentName  = name,
+       @studentAge   = age,
+       @studentGrade = average_grade
+FROM college.students
+WHERE id = 1;
+
+SELECT @studentName  AS name,
+       @studentAge   AS age,
+       @studentGrade AS average_grade;
+GO
+
+-- Задание 6
+DECLARE @studentCount INT;
+
+SELECT @studentCount = COUNT(*)
+FROM college.students;
+
+SELECT @studentCount AS student_count;
+GO
+
+-- Задание 7
+DECLARE @age INT = 18;
+
+SELECT @age     AS current_age,
+       @age + 5 AS future_age;
+GO
+
+-- Задание 8
+DECLARE @grade1 DECIMAL(3,2) = 4.00;
+DECLARE @grade2 DECIMAL(3,2) = 5.00;
+DECLARE @grade3 DECIMAL(3,2) = 3.00;
+
+SELECT (@grade1 + @grade2 + @grade3) / 3.0 AS avg_grade;
+GO
+
+-- Задание 9
+DECLARE @price    DECIMAL(10,2) = 1500;
+DECLARE @discount DECIMAL(5,2)  = 10;
+DECLARE @finalPrice DECIMAL(10,2);
+
+SET @finalPrice = @price - (@price * @discount / 100);
+
+SELECT @price      AS price,
+       @discount   AS discount_percent,
+       @finalPrice AS final_price;
+GO
+
+-- Задание 10
+DECLARE @age INT = 18;
+
+IF @age >= 18
+    PRINT N'Совершеннолетний';
+ELSE
+    PRINT N'Несовершеннолетний';
+GO
+
+-- Задание 11
+DECLARE @grade INT = 3;
+
+IF @grade >= 3
+    PRINT N'Студент успевает';
+ELSE
+    PRINT N'Есть задолженность';
+GO
+
+-- Задание 12
+DECLARE @price DECIMAL(10,2) = 6000;
+
+IF @price >= 5000
+    PRINT N'Большая покупка';
+ELSE
+    PRINT N'Обычная покупка';
+GO
+
+-- Задание 13
+DECLARE @age INT = 18;
+
+IF @age < 18
+    PRINT N'Несовершеннолетний';
+ELSE IF @age BETWEEN 18 AND 19
+    PRINT N'18–19 лет';
+ELSE
+    PRINT N'20+';
+GO
+
+-- Задание 14
+DECLARE @averageGrade DECIMAL(3,2) = 4.70;
+
+IF @averageGrade >= 4.5
+    PRINT N'Отличник';
+ELSE IF @averageGrade >= 3.5
+    PRINT N'Хорошист';
+ELSE IF @averageGrade >= 3.0
+    PRINT N'Успевает';
+ELSE
+    PRINT N'Есть задолженности';
+GO
+
+-- Задание 15
+SELECT name,
+       age,
+       CASE
+           WHEN age < 18 THEN N'Младше 18'
+           WHEN age BETWEEN 18 AND 19 THEN N'18–19 лет'
+           ELSE N'20+'
+       END AS age_group
+FROM college.students;
+GO
+
+-- Задание 16
+SELECT name,
+       average_grade,
+       CASE
+           WHEN average_grade >= 4.5 THEN N'Отличник'
+           WHEN average_grade >= 3.5 THEN N'Хорошист'
+           WHEN average_grade >= 3.0 THEN N'Успевает'
+           ELSE N'Есть задолженности'
+       END AS result
+FROM college.students;
+GO
+
+-- Задание 17
+SELECT name,
+       age,
+       CASE
+           WHEN age >= 18 THEN N'Совершеннолетний'
+           ELSE N'Несовершеннолетний'
+       END AS age_status
+FROM college.students;
+GO
+
+-- Задание 18
+DECLARE @averageGroupGrade DECIMAL(3,2);
+
+SELECT @averageGroupGrade = AVG(average_grade)
+FROM college.students;
+
+SELECT @averageGroupGrade AS average_group_grade;
+GO
+
+-- Задание 19
+DECLARE @averageGroupGrade DECIMAL(3,2);
+
+SELECT @averageGroupGrade = AVG(average_grade)
+FROM college.students;
+
+IF @averageGroupGrade >= 4.5
+    PRINT N'Группа показывает отличный результат';
+ELSE IF @averageGroupGrade >= 3.5
+    PRINT N'Группа показывает хороший результат';
+ELSE IF @averageGroupGrade >= 3.0
+    PRINT N'Группа успевает';
+ELSE
+    PRINT N'Группе необходимо улучшить результаты';
+GO
+
+-- Задание 20
+DECLARE @studentId    INT = 1;
+DECLARE @studentName  NVARCHAR(100);
+DECLARE @studentAge   INT;
+DECLARE @studentGrade DECIMAL(3,2);
+
+-- 1–4 данные студента
+SELECT @studentName  = name,
+       @studentAge   = age,
+       @studentGrade = average_grade
+FROM college.students
+WHERE id = @studentId;
+
+-- 5
+DECLARE @ageGroup NVARCHAR(50);
+SELECT @ageGroup = CASE
+    WHEN @studentAge < 18 THEN N'Младше 18'
+    WHEN @studentAge BETWEEN 18 AND 19 THEN N'18–19 лет'
+    ELSE N'20+'
+END;
+
+-- 6
+DECLARE @result NVARCHAR(50);
+SELECT @result = CASE
+    WHEN @studentGrade >= 4.5 THEN N'Отличник'
+    WHEN @studentGrade >= 3.5 THEN N'Хорошист'
+    WHEN @studentGrade >= 3.0 THEN N'Успевает'
+    ELSE N'Есть задолженности'
+END;
+
+-- 7
+PRINT N'Информация о студенте';
+PRINT N'Имя: '              + @studentName;
+PRINT N'Возраст: '          + CAST(@studentAge AS NVARCHAR(10));
+PRINT N'Возрастная группа: ' + @ageGroup;
+PRINT N'Средний балл: '     + CAST(@studentGrade AS NVARCHAR(10));
+PRINT N'Результат: '        + @result;
+GO
