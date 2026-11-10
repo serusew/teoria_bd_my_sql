@@ -1,0 +1,82 @@
+IF OBJECT_ID('college.student_statistics', 'V') IS NOT NULL
+    DROP VIEW college.student_statistics;
+GO
+
+CREATE VIEW college.student_statistics
+AS
+SELECT
+    s.id            AS student_id,
+    s.name          AS student_name,
+    g.name          AS group_name,
+    COUNT(gr.id)    AS grade_count,
+    AVG(gr.grade)   AS average_grade,
+    MIN(gr.grade)   AS min_grade,
+    MAX(gr.grade)   AS max_grade
+FROM college.students s
+JOIN college.groups g
+    ON g.id = s.group_id
+JOIN college.grades gr
+    ON gr.student_id = s.id
+GROUP BY
+    s.id,
+    s.name,
+    g.name;
+GO
+
+SELECT *
+FROM college.student_statistics;
+GO
+
+ --- 2.2
+SELECT
+    student_name,
+    group_name,
+    average_grade
+FROM college.student_statistics
+WHERE average_grade >= 4.5;
+GO
+
+--- 2.3
+SELECT
+    student_name,
+    group_name,
+    average_grade
+FROM college.student_statistics
+ORDER BY average_grade DESC;
+GO
+
+--- 2.4. 
+SELECT
+    student_name,
+    group_name,
+    average_grade
+FROM college.student_statistics
+WHERE group_name = N'ИС-21';
+GO
+
+--- 2.5. 
+SELECT
+    student_id,
+    student_name,
+    grade_count,
+    average_grade,
+    min_grade,
+    max_grade
+FROM college.student_statistics
+WHERE student_id = 1;
+GO
+
+INSERT INTO college.grades (student_id, grade, grade_date)
+VALUES (1, 5, GETDATE());
+GO
+
+SELECT
+    student_id,
+    student_name,
+    grade_count,
+    average_grade,
+    min_grade,
+    max_grade
+FROM college.student_statistics
+WHERE student_id = 1;
+GO
