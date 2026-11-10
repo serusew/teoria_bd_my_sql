@@ -1,0 +1,163 @@
+IF DB_ID('CollegeDB') IS NULL
+BEGIN
+    CREATE DATABASE CollegeDB;
+END
+GO
+
+USE CollegeDB;
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'college')
+BEGIN
+    EXEC('CREATE SCHEMA college');
+END
+GO
+
+IF OBJECT_ID('college.students', 'U') IS NOT NULL
+    DROP TABLE college.students;
+GO
+
+CREATE TABLE college.students
+(
+    id            INT           NOT NULL PRIMARY KEY IDENTITY(1,1),
+    name          NVARCHAR(100) NOT NULL,
+    age           INT           NOT NULL,
+    average_grade DECIMAL(3,2)  NOT NULL
+);
+GO
+
+INSERT INTO college.students (name, age, average_grade) VALUES
+    (N'Иван',    18, 4.70),
+    (N'Мария',   17, 4.20),
+    (N'Алексей', 18, 3.60),
+    (N'Анна',    19, 4.90),
+    (N'Дмитрий', 17, 2.80);
+GO
+
+-- 1 
+
+DECLARE @studentCount INT;
+
+SELECT @studentCount = COUNT(*) FROM college.students;
+
+SELECT @studentCount AS student_count;
+GO
+
+-- 2
+
+DECLARE @studentName NVARCHAR(100);
+DECLARE @studentId   INT = 3;  -- id выбранного студента
+
+SELECT @studentName = name
+FROM college.students
+WHERE id = @studentId;
+
+SELECT @studentName AS student_name;
+GO
+
+--3
+
+DECLARE @age       INT;
+DECLARE @studentId INT = 3;
+
+SELECT @age = age
+FROM college.students
+WHERE id = @studentId;
+
+IF @age >= 18
+    PRINT N'Совершеннолетний';
+ELSE
+    PRINT N'Несовершеннолетний';
+GO
+
+--4 
+
+SELECT
+    id,
+    name,
+    age,
+    average_grade,
+    CASE
+        WHEN age >= 18 THEN N'Совершеннолетний'
+        ELSE N'Несовершеннолетний'
+    END AS age_status
+FROM college.students;
+GO
+
+--5
+
+SELECT
+    name,
+    average_grade,
+    CASE
+        WHEN average_grade >= 4.5           THEN N'Отличник'
+        WHEN average_grade >= 3.5           THEN N'Хорошист'
+        WHEN average_grade >= 3.0           THEN N'Успевает'
+        ELSE                                     N'Есть задолженности'
+    END AS result
+FROM college.students;
+GO
+
+--6
+
+DECLARE @price    DECIMAL(10,2) = 1500.00;
+DECLARE @discount DECIMAL(5,2);
+
+IF @price >= 1000
+    SET @discount = 10;
+ELSE
+    SET @discount = 5;
+
+SELECT
+    @price                                        AS price,
+    @discount                                     AS discount_percent,
+    @price - (@price * @discount / 100.0)         AS final_price;
+GO
+
+-- 7
+
+SELECT
+    id,
+    name,
+    age,
+    CASE
+        WHEN age < 18 THEN N'Младше 18'
+        WHEN age BETWEEN 18 AND 19 THEN N'18–19 лет'
+        ELSE N'20+'
+    END AS age_group
+FROM college.students;
+GO
+
+-- 8
+
+DECLARE @studentId    INT = 1;
+DECLARE @studentName  NVARCHAR(100);
+DECLARE @studentAge   INT;
+DECLARE @studentGrade DECIMAL(3,2);
+
+-- 1. 
+SELECT
+    @studentName  = name,
+    @studentAge   = age,
+    @studentGrade = average_grade
+FROM college.students
+WHERE id = @studentId;
+
+-- 2.4.
+SELECT
+    @studentId    AS id,
+    @studentName  AS name,
+    @studentAge   AS age,
+    @studentGrade AS average_grade,
+    CASE
+        WHEN @studentAge < 18          THEN N'Младше 18'
+        WHEN @studentAge BETWEEN 18 AND 19 THEN N'18–19 лет'
+        ELSE                                N'20+'
+    END AS age_group,
+    CASE
+        WHEN @studentGrade >= 4.5 THEN N'Отличник'
+        WHEN @studentGrade >= 3.5 THEN N'Хорошист'
+        WHEN @studentGrade >= 3.0 THEN N'Успевает'
+        ELSE                           N'Есть задолженности'
+    END AS result;
+GO  
