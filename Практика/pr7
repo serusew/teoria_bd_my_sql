@@ -1,0 +1,167 @@
+USE CollegeDB;
+GO
+
+SELECT * FROM college.groups;
+SELECT * FROM college.students;
+SELECT * FROM college.grades;
+GO
+
+-- 1
+
+CREATE OR ALTER FUNCTION college.GetStudentStatus
+(
+    @average_grade DECIMAL(3,2)
+)
+RETURNS NVARCHAR(50)
+AS
+BEGIN
+    DECLARE @status NVARCHAR(50);
+
+    IF @average_grade >= 4.5
+        SET @status = N'Отличник';
+    ELSE IF @average_grade >= 3.5
+        SET @status = N'Хорошист';
+    ELSE
+        SET @status = N'Требуется дополнительная подготовка';
+
+    RETURN @status;
+END;
+GO
+
+SELECT college.GetStudentStatus(5.0) AS status_5_0;
+SELECT college.GetStudentStatus(4.2) AS status_4_2;
+SELECT college.GetStudentStatus(3.1) AS status_3_1;
+
+SELECT 
+    name, 
+    average_grade,
+    college.GetStudentStatus(average_grade) AS status
+FROM college.students;
+GO
+
+-- 2
+
+CREATE OR ALTER FUNCTION college.CalculateDiscount
+(
+    @price    DECIMAL(10,2),
+    @discount DECIMAL(5,2)
+)
+RETURNS DECIMAL(10,2)
+AS
+BEGIN
+    RETURN @price - (@price * @discount / 100.0);
+END;
+GO
+
+SELECT college.CalculateDiscount(10000, 10) AS price_after_discount_1;
+SELECT college.CalculateDiscount(25000, 15) AS price_after_discount_2;
+
+SELECT 
+    name,
+    average_grade,
+    college.CalculateDiscount(10000, 10) AS discounted_price
+FROM college.students;
+GO
+
+-- 3
+
+SELECT 
+    s.name              AS [Имя],
+    g.name              AS [Группа],
+    s.average_grade     AS [Средний балл],
+    college.GetStudentStatus(s.average_grade) AS [Статус]
+FROM college.students s
+JOIN college.groups g ON g.id = s.group_id
+ORDER BY g.name, s.name;
+GO
+
+-- 4
+
+CREATE OR ALTER FUNCTION college.GetStudentsByGroup
+(
+    @group_id INT
+)
+RETURNS TABLE
+AS
+RETURN
+(
+    SELECT 
+        id          AS student_id,
+        name,
+        age,
+        average_grade,
+        group_id
+    FROM college.students
+    WHERE group_id = @group_id
+);
+GO
+
+SELECT * FROM college.GetStudentsByGroup(1);
+SELECT * FROM college.GetStudentsByGroup(2);
+SELECT * FROM college.GetStudentsByGroup(3);
+GO
+
+-- 5
+
+SELECT 
+    s.name              AS student_name,
+    g.name              AS group_name,
+    s.average_grade
+FROM college.GetStudentsByGroup(1) s
+JOIN college.groups g ON g.id = s.group_id;
+GO
+
+-- 6.
+
+CREATE OR ALTER FUNCTION college.GetAgeCategory
+(
+    @age INT
+)
+RETURNS NVARCHAR(50)
+AS
+BEGIN
+    DECLARE @category NVARCHAR(50);
+
+    IF @age < 18
+        SET @category = N'Несовершеннолетний';
+    ELSE IF @age <= 20
+        SET @category = N'Студент';
+    ELSE
+        SET @category = N'Взрослый';
+
+    RETURN @category;
+END;
+GO
+
+SELECT college.GetAgeCategory(17) AS age_17;
+SELECT college.GetAgeCategory(19) AS age_19;
+SELECT college.GetAgeCategory(25) AS age_25;
+
+SELECT 
+    name, 
+    age, 
+    college.GetAgeCategory(age) AS age_category
+FROM college.students;
+GO
+
+SELECT 
+    s.name                                      AS [Имя],
+    g.name                                      AS [Группа],
+    s.age                                       AS [Возраст],
+    s.average_grade                             AS [Средний балл],
+    college.GetStudentStatus(s.average_grade)   AS [Статус успеваемости],
+    college.GetAgeCategory(s.age)               AS [Возрастная категория]
+FROM college.students s
+JOIN college.groups g ON g.id = s.group_id
+ORDER BY g.name, s.name;
+GO
+
+SELECT 
+    SCHEMA_NAME(schema_id) AS schema_name,
+    name,
+    type_desc
+FROM sys.objects
+WHERE schema_id = SCHEMA_ID('college')
+  AND type IN ('FN', 'IF', 'TF')
+ORDER BY name;
+GO
