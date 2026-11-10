@@ -1,0 +1,359 @@
+USE CollegeDB;
+GO
+
+-- Создаём схему game, если её нет
+IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'game')
+    EXEC('CREATE SCHEMA game');
+GO
+
+-- Удаляем таблицу, если она уже существует 
+IF OBJECT_ID('game.locations', 'U') IS NOT NULL
+    DROP TABLE game.locations;
+GO
+
+-- Создаём таблицу локаций
+CREATE TABLE game.locations
+(
+    id            INT           NOT NULL PRIMARY KEY,
+    name          NVARCHAR(100) NOT NULL,
+    parent_id     INT           NULL,
+    location_type NVARCHAR(50)  NOT NULL,
+    difficulty    INT           NOT NULL,
+    reward        INT           NOT NULL,
+    CONSTRAINT FK_locations_parent
+        FOREIGN KEY (parent_id) REFERENCES game.locations(id)
+);
+GO
+
+-- Заполняем игровой мир
+INSERT INTO game.locations (id, name, parent_id, location_type, difficulty, reward) VALUES
+(1,  N'Королевство',       NULL, N'Мир',        1,  0),
+(2,  N'Северные земли',    1,    N'Регион',     2,  0),
+(3,  N'Южные земли',       1,    N'Регион',     2,  0),
+(4,  N'Лес',               2,    N'Локация',    3,  100),
+(5,  N'Горная крепость',   2,    N'Локация',    5,  300),
+(6,  N'Древние руины',     4,    N'Подземелье', 6,  500),
+(7,  N'Логово волков',     4,    N'Подземелье', 4,  250),
+(8,  N'Пещера дракона',    5,    N'Подземелье', 10, 1000),
+(9,  N'Пустыня',           3,    N'Локация',    3,  100),
+(10, N'Город',             3,    N'Локация',    2,  50),
+(11, N'Храм песков',       9,    N'Подземелье', 7,  600),
+(12, N'Таверна',           10,   N'Здание',     1,  20),
+(13, N'Рынок',             10,   N'Здание',     1,  30);
+GO
+
+SELECT * FROM game.locations ORDER BY id;
+GO
+
+-- блок 1
+
+WITH DangerousLocations AS
+(
+    SELECT
+        id,
+        name,
+        difficulty,
+        reward
+    FROM game.locations
+    WHERE difficulty >= 5
+)
+SELECT *
+FROM DangerousLocations;
+GO
+
+-- блок 2
+
+WITH LocationStatistics AS
+(
+    SELECT
+        p.id,
+        p.name,
+        COUNT(c.id)        AS children_count,
+        AVG(c.difficulty)  AS avg_difficulty,
+        MAX(c.reward)      AS max_reward
+    FROM game.locations AS p
+    LEFT JOIN game.locations AS c ON c.parent_id = p.id
+    GROUP BY p.id, p.name
+)
+SELECT
+    name           AS [Локация],
+    children_count AS [Количество дочерних],
+    avg_difficulty AS [Средняя сложность],
+    max_reward     AS [Максимальная награда]
+FROM LocationStatistics
+WHERE children_count > 0
+ORDER BY name;
+GO
+
+-- блок 3
+
+WITH RegionDanger AS
+(
+    SELECT
+        r.id,
+        r.name            AS region_name,
+        r.difficulty      AS region_difficulty,
+        MAX(c.difficulty) AS max_child_difficulty
+    FROM game.locations AS r
+    INNER JOIN game.locations AS c ON c.parent_id = r.id
+    WHERE r.location_type = N'Регион'
+    GROUP BY r.id, r.name, r.difficulty
+)
+SELECT
+    region_name          AS [Регион],
+    region_difficulty    AS [Сложность региона],
+    max_child_difficulty AS [Макс. сложность дочерних]
+FROM RegionDanger
+WHERE max_child_difficulty >= 7;
+GO
+
+-- блок 4
+
+WITH LocationTree AS
+(
+    -- Начальная локация
+    SELECT
+        id,
+        name,
+        parent_id,
+        location_type,
+        difficulty,
+        reward
+    FROM game.locations
+    WHERE name = N'Северные земли'
+
+    UNION ALL
+
+    -- Поиск дочерних локаций
+    SELECT
+        c.id,
+        c.name,
+        c.parent_id,
+        c.location_type,
+        c.difficulty,
+        c.reward
+    FROM game.locations AS c
+    INNER JOIN LocationTree AS p ON c.parent_id = p.id
+)
+SELECT *
+FROM LocationTree;
+GO
+
+-- блок 5
+
+WITH LocationTree AS
+(
+    -- Начальная локация
+    SELECT
+        id,
+        name,
+        parent_id,
+        location_type,
+        difficulty,
+        reward,
+        0 AS level
+    FROM game.locations
+    WHERE name = N'Северные земли'
+
+    UNION ALL
+
+    -- Поиск дочерних локаций
+    SELECT
+        c.id,
+        c.name,
+        c.parent_id,
+        c.location_type,
+        c.difficulty,
+        c.reward,
+        p.level + 1
+    FROM game.locations AS c
+    INNER JOIN LocationTree AS p ON c.parent_id = p.id
+)
+SELECT
+    name  AS [Локация],
+    level AS [Уровень]
+FROM LocationTree
+ORDER BY level, name;
+GO
+
+-- блок 6
+
+WITH LocationTree AS
+(
+    SELECT
+        id, name, parent_id, location_type,
+        difficulty, reward, 0 AS level
+    FROM game.locations
+    WHERE name = N'Северные земли'
+
+    UNION ALL
+
+    SELECT
+        c.id, c.name, c.parent_id, c.location_type,
+        c.difficulty, c.reward, p.level + 1
+    FROM game.locations AS c
+    INNER JOIN LocationTree AS p ON c.parent_id = p.id
+)
+SELECT
+    name          AS [Локация],
+    level         AS [Уровень],
+    location_type AS [Тип],
+    difficulty    AS [Сложность],
+    reward        AS [Награда]
+FROM LocationTree
+ORDER BY level, name;
+GO
+
+-- блок 7
+WITH LocationTree AS
+(
+    SELECT
+        id, name, parent_id, location_type,
+        difficulty, reward, 0 AS level
+    FROM game.locations
+    WHERE name = N'Северные земли'
+
+    UNION ALL
+
+    SELECT
+        c.id, c.name, c.parent_id, c.location_type,
+        c.difficulty, c.reward, p.level + 1
+    FROM game.locations AS c
+    INNER JOIN LocationTree AS p ON c.parent_id = p.id
+)
+SELECT TOP (1)
+    name       AS [Название локации],
+    reward     AS [Награда],
+    difficulty AS [Сложность]
+FROM LocationTree
+ORDER BY reward DESC;
+GO
+-- блок 8
+
+WITH LocationTree AS
+(
+    SELECT
+        id, name, parent_id, location_type,
+        difficulty, reward, 0 AS level
+    FROM game.locations
+    WHERE name = N'Северные земли'
+
+    UNION ALL
+
+    SELECT
+        c.id, c.name, c.parent_id, c.location_type,
+        c.difficulty, c.reward, p.level + 1
+    FROM game.locations AS c
+    INNER JOIN LocationTree AS p ON c.parent_id = p.id
+)
+SELECT
+    REPLICATE(N'    ', level) + name AS display_name
+FROM LocationTree
+ORDER BY level, name;
+GO
+
+
+WITH LocationTree AS
+(
+    -- Начальная локация — Королевство
+    SELECT
+        id,
+        name,
+        parent_id,
+        location_type,
+        difficulty,
+        reward,
+        0 AS level
+    FROM game.locations
+    WHERE name = N'Королевство'
+
+    UNION ALL
+
+    -- Рекурсивный обход дочерних локаций
+    SELECT
+        c.id,
+        c.name,
+        c.parent_id,
+        c.location_type,
+        c.difficulty,
+        c.reward,
+        p.level + 1
+    FROM game.locations AS c
+    INNER JOIN LocationTree AS p ON c.parent_id = p.id
+)
+SELECT
+    name                             AS [Локация],
+    location_type                    AS [Тип],
+    level                            AS [Уровень],
+    difficulty                       AS [Сложность],
+    reward                           AS [Награда],
+    REPLICATE(N'    ', level) + name AS [Дерево],
+    CAST(difficulty AS NVARCHAR(10)) + N' | ' +
+    CAST(reward     AS NVARCHAR(10)) AS [Сложность | Награда]
+FROM LocationTree
+ORDER BY level, name
+OPTION (MAXRECURSION 100);
+GO
+
+
+WITH LocationTree AS
+(
+    SELECT
+        id, name, parent_id, location_type,
+        difficulty, reward, 0 AS level
+    FROM game.locations
+    WHERE name = N'Королевство'
+
+    UNION ALL
+
+    SELECT
+        c.id, c.name, c.parent_id, c.location_type,
+        c.difficulty, c.reward, p.level + 1
+    FROM game.locations AS c
+    INNER JOIN LocationTree AS p ON c.parent_id = p.id
+)
+SELECT
+    name       AS [Локация],
+    difficulty AS [Сложность],
+    CASE
+        WHEN difficulty BETWEEN 1 AND 3 THEN N'Безопасная'
+        WHEN difficulty BETWEEN 4 AND 6 THEN N'Опасная'
+        WHEN difficulty BETWEEN 7 AND 9 THEN N'Очень опасная'
+        WHEN difficulty = 10            THEN N'Босс'
+        ELSE N'Неизвестно'
+    END        AS [Статус]
+FROM LocationTree
+ORDER BY difficulty, name
+OPTION (MAXRECURSION 100);
+GO
+
+
+WITH Subtree AS
+(
+    SELECT
+        id          AS root_id,
+        id          AS node_id,
+        parent_id,
+        reward
+    FROM game.locations
+
+    UNION ALL
+
+    SELECT
+        s.root_id,
+        c.id,
+        c.parent_id,
+        c.reward
+    FROM game.locations AS c
+    INNER JOIN Subtree AS s ON c.parent_id = s.node_id
+)
+SELECT
+    l.name        AS [Локация],
+    SUM(s.reward) AS [Суммарная награда потомков]
+FROM Subtree AS s
+INNER JOIN game.locations AS l ON l.id = s.root_id
+WHERE s.node_id <> s.root_id          
+GROUP BY l.id, l.name
+HAVING SUM(s.reward) > 0
+ORDER BY [Суммарная награда потомков] DESC;
+GO
