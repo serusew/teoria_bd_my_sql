@@ -1,0 +1,154 @@
+IF DB_ID('CollegeDB') IS NULL
+    CREATE DATABASE CollegeDB;
+GO
+
+USE CollegeDB;
+GO
+
+
+IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'college')
+    EXEC('CREATE SCHEMA college');
+GO
+
+IF OBJECT_ID('college.students', 'U') IS NOT NULL
+    DROP TABLE college.students;
+GO
+
+CREATE TABLE college.students (
+    student_id    INT IDENTITY(1,1) PRIMARY KEY,
+    name          NVARCHAR(100) NOT NULL,
+    group_id      INT           NOT NULL,
+    average_grade DECIMAL(3,2)  NOT NULL
+);
+
+GO
+
+INSERT INTO college.students (name, group_id, average_grade) VALUES
+    (N'Мария',   101, 4.90),
+    (N'Иван',    101, 4.50),
+    (N'Алексей', 101, 4.10),
+    (N'Ольга',   101, 4.10),
+    (N'Пётр',    101, 3.80),
+
+    (N'Анна',    102, 4.80),
+    (N'Сергей',  102, 4.20),
+    (N'Дмитрий', 102, 4.20),
+    (N'Елена',   102, 3.90),
+
+    (N'Олег',    103, 5.00),
+    (N'Никита',  103, 4.70),
+    (N'Татьяна', 103, 4.70),
+    (N'Игорь',   103, 4.30),
+    (N'Юлия',    103, 3.60);
+GO
+
+-- 1
+
+SELECT
+    name,
+    group_id,
+    average_grade,
+    ROW_NUMBER() OVER (
+        PARTITION BY group_id
+        ORDER BY average_grade DESC
+    ) AS row_number,
+    RANK() OVER (
+        PARTITION BY group_id
+        ORDER BY average_grade DESC
+    ) AS rank_number,
+    DENSE_RANK() OVER (
+        PARTITION BY group_id
+        ORDER BY average_grade DESC
+    ) AS dense_rank_number,
+    AVG(average_grade) OVER (
+        PARTITION BY group_id
+    ) AS group_average
+FROM college.students
+ORDER BY group_id, average_grade DESC;
+GO
+
+-- 2
+
+WITH RankedStudents AS (
+    SELECT
+        name,
+        group_id,
+        average_grade,
+        ROW_NUMBER() OVER (
+            PARTITION BY group_id
+            ORDER BY average_grade DESC
+        ) AS row_number,
+        RANK() OVER (
+            PARTITION BY group_id
+            ORDER BY average_grade DESC
+        ) AS rank_number,
+        AVG(average_grade) OVER (
+            PARTITION BY group_id
+        ) AS group_average
+    FROM college.students
+)
+SELECT
+    name,
+    group_id,
+    average_grade,
+    row_number,
+    rank_number,
+    group_average,
+    average_grade - group_average AS deviation_from_average
+FROM RankedStudents
+WHERE row_number <= 3
+ORDER BY group_id, row_number;
+GO
+
+-- 3
+
+WITH Grades AS (
+    SELECT * FROM (VALUES
+        (5.0), (4.8), (4.8), (4.2), (4.2), (3.9)
+    ) AS t(average_grade)
+)
+SELECT
+    average_grade,
+    ROW_NUMBER() OVER (ORDER BY average_grade DESC) AS row_number,
+    RANK()       OVER (ORDER BY average_grade DESC) AS rank,
+    DENSE_RANK() OVER (ORDER BY average_grade DESC) AS dense_rank
+FROM Grades
+ORDER BY average_grade DESC;
+GO
+
+-- 4
+
+SELECT
+    name,
+    group_id,
+    average_grade,
+    LAG(average_grade) OVER (
+        PARTITION BY group_id
+        ORDER BY average_grade DESC
+    ) AS prev_grade,
+    LEAD(average_grade) OVER (
+        PARTITION BY group_id
+        ORDER BY average_grade DESC
+    ) AS next_grade,
+    average_grade - LAG(average_grade) OVER (
+        PARTITION BY group_id
+        ORDER BY average_grade DESC
+    ) AS diff_from_prev
+FROM college.students
+ORDER BY group_id, average_grade DESC;
+GO
+
+-- 5.
+
+SELECT
+    name,
+    group_id,
+    average_grade,
+    SUM(average_grade) OVER (
+        PARTITION BY group_id
+        ORDER BY average_grade DESC
+        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+    ) AS running_total
+FROM college.students
+ORDER BY group_id, average_grade DESC;
+GO
